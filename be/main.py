@@ -6,7 +6,7 @@ from database import engine, SessionLocal, Base
 from models import User, History, SystemState
 from services.auth_service import hash_password
 from services.scheduler_service import start_scheduler
-from routers import auth, users, door, history
+from routers import auth, users, door, history, face_recognition
 from ws import device_ws, client_ws
 
 # Create tables
@@ -27,6 +27,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(door.router)
 app.include_router(history.router)
+app.include_router(face_recognition.router)
 app.include_router(device_ws.router)
 app.include_router(client_ws.router)
 

@@ -1,6 +1,6 @@
 # SmartDoor Mobile App
 
-Ứng dụng di động React Native (Expo) để điều khiển và giám sát hệ thống cửa thông minh với tích hợp BLE (Bluetooth Low Energy).
+Ứng dụng di động React Native (Expo) để điều khiển và giám sát hệ thống cửa thông minh với tích hợp BLE (Bluetooth Low Energy) và nhận diện khuôn mặt.
 
 ## Công nghệ
 
@@ -12,6 +12,7 @@
 - Expo Secure Store - Lưu trữ token
 - react-native-ble-plx - BLE scanning
 - @react-native-community/datetimepicker - Time picker
+- Expo Camera - Chụp ảnh khuôn mặt
 
 ## Yêu cầu
 
@@ -19,6 +20,7 @@
 - npm hoặc yarn
 - Android Studio (build APK)
 - Android SDK (đã cài đặt qua Android Studio)
+- Gradle 8.14.3 (tự động cài qua Android Studio)
 
 ## Cài đặt
 
@@ -82,15 +84,21 @@ npm start
 ### Build APK cho Android
 
 ```bash
-# Prebuild native code
+# Prebuild native code (nếu chưa có thư mục android)
 npx expo prebuild
 
-# Build APK
+# Build APK Release
 cd android
-./gradlew assembleRelease
+./gradlew --stop                    # Dừng Gradle daemon
+./gradlew assembleRelease --no-daemon
 ```
 
 APK sẽ nằm tại: `android/app/build/outputs/apk/release/app-release.apk`
+
+**Lưu ý khi build:**
+- Nếu gặp lỗi file locking, chạy `./gradlew --stop` trước
+- Nếu gặp lỗi CMake, xóa thư mục `.cxx`: `Remove-Item -Recurse -Force android/app/.cxx`
+- Build lần đầu có thể mất 5-10 phút
 
 ### Cài đặt APK lên điện thoại
 
@@ -146,15 +154,17 @@ app/
 
 ### Admin
 - **Dashboard**: Điều khiển cửa trực tiếp (không cần BLE), khóa hệ thống
-- **Quản lý người dùng**: CRUD người dùng, gán thẻ RFID
+- **Quản lý người dùng**: CRUD người dùng, gán thẻ RFID, đăng ký khuôn mặt
 - **Lịch sử**: Xem lịch sử mở/đóng cửa với filter
 - **Lịch tự động**: Cấu hình tự động khóa/mở hệ thống theo giờ
 - **Thông báo realtime**: Nhận thông báo qua WebSocket
+- **Nhận diện khuôn mặt**: Chụp và đăng ký khuôn mặt cho người dùng
 
 ### User
 - **Điều khiển cửa qua BLE**: Phải ở gần cửa (trong vòng 1m) để mở
 - **Xem trạng thái realtime**: Trạng thái cửa cập nhật tức thì
 - **Thông báo**: Nhận thông báo khi có sự kiện
+- **Đăng ký khuôn mặt**: Chụp ảnh khuôn mặt để mở cửa bằng AI
 
 ### Chung
 - Pull-to-refresh
@@ -274,16 +284,41 @@ Ví dụ:
 
 ### Build APK thất bại
 
+**Lỗi: Task 'assemleRelease' not found**
+- Đánh máy sai, phải là `assembleRelease` (không phải `assemleRelease`)
+
+**Lỗi: Unable to delete directory (file locking)**
+```bash
+# Giải pháp:
+cd android
+./gradlew --stop
+Remove-Item -Recurse -Force app/.cxx
+Remove-Item -Recurse -Force app/build
+./gradlew assembleRelease --no-daemon
+```
+
+**Lỗi: CMake configuration failed**
+- Xóa thư mục `.cxx` và build lại
+- Kiểm tra Android NDK đã cài đặt
+
+**Lỗi khác:**
 1. Kiểm tra Android SDK đã cài đặt
 2. Kiểm tra `local.properties` có đúng đường dẫn SDK
 3. Chạy `./gradlew clean` trước khi build lại
 4. Kiểm tra Java version (cần JDK 11 hoặc 17)
+5. Đóng tất cả IDE và file explorer đang mở thư mục android
 
 ### WebSocket disconnect liên tục
 
 1. Kiểm tra backend không bị crash
 2. Kiểm tra kết nối mạng ổn định
 3. Xem log backend để biết lý do disconnect
+
+### Camera không hoạt động
+
+1. Kiểm tra quyền Camera đã cấp
+2. Kiểm tra Expo Camera đã cài đặt
+3. Restart ứng dụng sau khi cấp quyền
 
 ## License
 

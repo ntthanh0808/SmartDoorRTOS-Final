@@ -12,22 +12,55 @@ export default function UsersPage() {
 
   useEffect(() => { fetchUsers(); }, []);
 
-  const handleCreate = async (data) => {
+  const handleCreate = async (data, faceImages) => {
     try {
-      await api.post('/users', data);
+      // Create user first
+      const response = await api.post('/users', data);
+      const userId = response.data.id;
+
+      // Upload face images if provided
+      if (faceImages && faceImages.length > 0) {
+        const formData = new FormData();
+        faceImages.forEach((blob, index) => {
+          formData.append('images', blob, `face_${index}.jpg`);
+        });
+        formData.append('user_id', userId);
+
+        await api.post('/face/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      }
+
       setShowForm(false);
       fetchUsers();
+      alert('Tạo người dùng thành công!');
     } catch (err) {
       alert(err.response?.data?.detail || 'Lỗi');
     }
   };
 
-  const handleUpdate = async (data) => {
+  const handleUpdate = async (data, faceImages) => {
     try {
+      // Update user info
       await api.put(`/users/${editUser.id}`, data);
+
+      // Upload face images if provided
+      if (faceImages && faceImages.length > 0) {
+        const formData = new FormData();
+        faceImages.forEach((blob, index) => {
+          formData.append('images', blob, `face_${index}.jpg`);
+        });
+        formData.append('user_id', editUser.id);
+
+        await api.post('/face/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      }
+
       setEditUser(null);
       setShowForm(false);
       fetchUsers();
+      alert('Cập nhật người dùng thành công!');
     } catch (err) {
       alert(err.response?.data?.detail || 'Lỗi');
     }

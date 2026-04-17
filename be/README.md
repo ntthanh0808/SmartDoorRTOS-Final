@@ -1,6 +1,6 @@
 # SmartDoor - Backend
 
-Server API cho hệ thống khóa cửa thông minh.
+Server API cho hệ thống khóa cửa thông minh với tích hợp nhận diện khuôn mặt AI.
 
 ## Tech Stack
 
@@ -9,6 +9,9 @@ Server API cho hệ thống khóa cửa thông minh.
 - **python-jose** - JWT authentication
 - **passlib** - Bcrypt password hashing
 - **WebSocket** - Giao tiếp real-time với ESP32 và Frontend
+- **PyTorch** - Deep learning framework
+- **OpenCV** - Computer vision
+- **ResNet18** - Face recognition model
 
 ## Cấu trúc thư mục
 
@@ -18,6 +21,10 @@ be/
 ├── config.py            # Cấu hình (SECRET_KEY, DB, DEVICE_TOKEN)
 ├── database.py          # SQLAlchemy engine + session
 ├── requirements.txt
+├── train.py             # Script train model nhận diện khuôn mặt
+├── savedata.py          # Script lưu ảnh khuôn mặt từ ESP32
+├── rfid_face_client.py  # Client WebSocket test
+├── get_token.py         # Script lấy JWT token
 ├── models/
 │   ├── user.py          # Bảng users
 │   ├── history.py       # Bảng history
@@ -30,16 +37,26 @@ be/
 │   ├── auth.py          # POST /api/auth/login
 │   ├── users.py         # CRUD /api/users (admin)
 │   ├── door.py          # /api/door/open|close|lock|unlock|status
-│   └── history.py       # GET /api/history
+│   ├── history.py       # GET /api/history
+│   └── face_recognition.py  # /api/face/* - Nhận diện khuôn mặt
 ├── services/
 │   ├── auth_service.py  # JWT + password utilities
 │   ├── door_service.py  # Gửi lệnh tới ESP32 qua WebSocket
-│   └── notification.py  # Broadcast thông báo tới frontend
+│   ├── notification.py  # Broadcast thông báo tới frontend
+│   └── scheduler_service.py  # Lịch tự động
 ├── ws/
 │   ├── device_ws.py     # WS /ws/device - endpoint cho ESP32
 │   └── client_ws.py     # WS /ws/client - endpoint cho Frontend
-└── middleware/
-    └── auth_middleware.py  # JWT auth dependency
+├── middleware/
+│   └── auth_middleware.py  # JWT auth dependency
+├── ai_model/
+│   ├── face_recognition.py  # Model nhận diện khuôn mặt
+│   └── train_model.py       # Train model
+└── dataset/             # Thư mục chứa ảnh khuôn mặt
+    └── [user_id]/       # Mỗi user có 1 thư mục
+        ├── 1.jpg
+        ├── 2.jpg
+        └── ...
 ```
 
 ## Cài đặt & Chạy
@@ -75,6 +92,14 @@ Tài khoản admin được tạo tự động khi khởi động lần đầu.
 | POST   | `/api/door/lock`    | Admin  | Khóa hệ thống             |
 | POST   | `/api/door/unlock`  | Admin  | Mở khóa hệ thống          |
 | GET    | `/api/history`      | Admin  | Lịch sử mở/đóng cửa      |
+| POST   | `/api/face/register`| User+  | Đăng ký khuôn mặt         |
+| POST   | `/api/face/recognize`| -     | Nhận diện khuôn mặt       |
+| GET    | `/api/face/users/{id}/images`| Admin | Lấy ảnh khuôn mặt |
+| DELETE | `/api/face/users/{id}/images`| Admin | Xóa ảnh khuôn mặt |
+| GET    | `/api/schedules`    | Admin  | Danh sách lịch tự động    |
+| POST   | `/api/schedules`    | Admin  | Tạo lịch tự động          |
+| PATCH  | `/api/schedules/{id}`| Admin | Cập nhật lịch            |
+| DELETE | `/api/schedules/{id}`| Admin | Xóa lịch                 |
 | WS     | `/ws/device`        | Token  | WebSocket cho ESP32        |
 | WS     | `/ws/client`        | JWT    | WebSocket cho Frontend     |
 
@@ -86,6 +111,7 @@ Tài khoản admin được tạo tự động khi khởi động lần đầu.
 {"event": "card_scanned", "card_uid": "AB:CD:EF:12"}
 {"event": "door_status", "status": "opened|opening|closed|closing"}
 {"event": "motion_detected"}
+{"event": "face_captured", "image": "base64_encoded_image"}
 ```
 
 ### Server → ESP32
@@ -96,6 +122,8 @@ Tài khoản admin được tạo tự động khi khởi động lần đầu.
 {"action": "deny", "reason": "invalid|locked"}
 {"action": "system_locked"}
 {"action": "system_unlocked"}
+{"action": "face_recognized", "user_id": 1, "name": "Nguyen Van A"}
+{"action": "face_unknown"}
 ```
 
 ### Server → Frontend
@@ -152,6 +180,63 @@ Trong `config.py`:
 VALID_BEACON_IDS = ["SMARTDOOR_BEACON_001"]
 ```
 
+## Nhận diện khuôn mặt (Face Recognition)
+
+Backend sử dụng PyTorch và ResNet18 để nhận diện khuôn mặt.
+
+### Cách hoạt động
+
+1. **Đăng ký khuôn mặt**: User chụp 5-10 ảnh khuôn mặt từ nhiều góc độ
+2. **Lưu dataset**: Ảnh được lưu vào `dataset/[user_id]/`
+3. **Train model**: Chạy `python train.py` để train model
+4. **Nhận diện**: ESP32 gửi ảnh lên server, server nhận diện và trả về user_id
+
+### Endpoints nhận diện khuôn mặt
+
+```
+POST /api/face/register
+Body: {
+  "user_id": 1,
+  "image": "base64_encoded_image"
+}
+
+POST /api/face/recognize
+Body: {
+  "image": "base64_encoded_image"
+}
+Response: {
+  "user_id": 1,
+  "confidence": 0.95,
+  "name": "Nguyen Van A"
+}
+```
+
+### Train model
+
+```bash
+# Sau khi đăng ký khuôn mặt cho nhiều user
+python train.py
+
+# Model được lưu tại: resnet18_face.pth
+```
+
+### Cấu hình model
+
+Trong `ai_model/face_recognition.py`:
+
+```python
+MODEL_PATH = "resnet18_face.pth"
+CONFIDENCE_THRESHOLD = 0.7  # Ngưỡng tin cậy
+IMAGE_SIZE = (224, 224)     # Kích thước ảnh input
+```
+
+### Yêu cầu
+
+- Ảnh khuôn mặt rõ nét, đủ sáng
+- Khuôn mặt chiếm ít nhất 30% ảnh
+- Mỗi user cần ít nhất 5 ảnh để train
+- Ảnh từ nhiều góc độ khác nhau
+
 ## Lịch tự động
 
 Backend hỗ trợ tự động khóa/mở hệ thống theo giờ:
@@ -159,45 +244,25 @@ Backend hỗ trợ tự động khóa/mở hệ thống theo giờ:
 ### Endpoints
 
 ```
-GET  /api/door/schedule      # Lấy cấu hình lịch
-POST /api/door/schedule      # Lưu cấu hình lịch
+GET  /api/schedules           # Danh sách lịch
+POST /api/schedules           # Tạo lịch mới
 Body: {
-  "enabled": true,
-  "start_time": "08:00",
-  "end_time": "18:00"
-}
-```
-
-### Cách hoạt động
-
-- Background task chạy mỗi phút kiểm tra thời gian
-- Nếu đến `start_time`: Tự động mở khóa hệ thống
-- Nếu đến `end_time`: Tự động khóa hệ thống
-- Gửi thông báo qua WebSocket cho frontend
-
-## Quản lý lịch (Schedules)
-
-CRUD lịch tự động cho các hành động:
-
-### Endpoints
-
-```
-GET    /api/schedules           # Danh sách lịch
-POST   /api/schedules           # Tạo lịch mới
-PATCH  /api/schedules/{id}      # Cập nhật lịch
-DELETE /api/schedules/{id}      # Xóa lịch
-```
-
-### Ví dụ tạo lịch
-
-```json
-{
   "time": "08:00",
   "action": "unlock",
   "days": ["Mon", "Tue", "Wed", "Thu", "Fri"],
   "is_active": true
 }
+
+PATCH /api/schedules/{id}     # Cập nhật lịch
+DELETE /api/schedules/{id}    # Xóa lịch
 ```
+
+### Cách hoạt động
+
+- Background task chạy mỗi phút kiểm tra thời gian
+- Nếu đến giờ trong lịch: Thực hiện action (lock/unlock)
+- Gửi thông báo qua WebSocket cho frontend
+- Chỉ chạy vào các ngày được chọn
 
 ## Troubleshooting
 
@@ -224,6 +289,21 @@ DELETE /api/schedules/{id}      # Xóa lịch
 1. Kiểm tra `VALID_BEACON_IDS` trong `config.py`
 2. Kiểm tra ESP32 đang broadcast BLE beacon
 3. Xem log request `/api/door/open-ble`
+
+### Nhận diện khuôn mặt không chính xác
+
+1. Kiểm tra model đã train: `resnet18_face.pth` phải tồn tại
+2. Chạy lại `python train.py` với nhiều ảnh hơn
+3. Tăng số lượng ảnh training (ít nhất 10 ảnh/user)
+4. Kiểm tra ảnh đủ sáng và rõ nét
+5. Giảm `CONFIDENCE_THRESHOLD` nếu model quá strict
+
+### Train model lỗi
+
+1. Kiểm tra PyTorch đã cài đặt: `pip install torch torchvision`
+2. Kiểm tra thư mục `dataset/` có ảnh
+3. Kiểm tra GPU/CPU: Model tự động chọn device
+4. Xem log chi tiết khi chạy `python train.py`
 
 ## License
 

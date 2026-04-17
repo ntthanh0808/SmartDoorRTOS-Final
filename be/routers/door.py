@@ -52,6 +52,35 @@ def door_status(db: Session = Depends(get_db), _=Depends(get_current_user)):
     return {"door_status": state.door_status, "is_locked": state.is_locked}
 
 
+@router.post("/open-face")
+async def open_door_face(
+    user_name: str,
+    db: Session = Depends(get_db)
+):
+    """Mở cửa qua Face ID - không cần authentication"""
+    state = get_system_state(db)
+    if state.is_locked:
+        raise HTTPException(status_code=403, detail="Hệ thống đang khóa")
+    
+    # Tìm user theo tên
+    user = db.query(User).filter(User.full_name == user_name).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
+    
+    # Gửi lệnh mở cửa với tên người dùng
+    await command_open_door(user.full_name)
+    
+    # Lưu lịch sử
+    history = History(user_id=user.id, action="open", method="face-id", success=True)
+    db.add(history)
+    db.commit()
+    
+    # Gửi thông báo
+    await notify_alert(f"{user.full_name} đã mở cửa bằng FACE ID", "access")
+    
+    return {"message": "Đã gửi lệnh mở cửa"}
+
+
 @router.post("/open")
 async def open_door(
     db: Session = Depends(get_db), 
@@ -87,7 +116,7 @@ async def open_door_ble(
     
     # Xác thực BLE Beacon ID
     if request.beacon_id != VALID_BEACON_ID:
-        history = History(user_id=user.id, action="open", method="app-ble", success=False)
+        history = History(user_id=user.id, action="open", method="app", success=False)
         db.add(history)
         db.commit()
         await notify_alert(f"⚠️ {user.full_name} thử mở cửa nhưng không ở gần", "alert")
@@ -96,11 +125,11 @@ async def open_door_ble(
     # Mở cửa
     await command_open_door(user.full_name)
     
-    history = History(user_id=user.id, action="open", method="app-ble", success=True)
+    history = History(user_id=user.id, action="open", method="app", success=True)
     db.add(history)
     db.commit()
     
-    await notify_alert(f"{user.full_name} đã mở cửa qua BLE", "access")
+    await notify_alert(f"{user.full_name} đã mở cửa qua app", "access")
     return {"message": "Đã mở cửa thành công"}
 
 

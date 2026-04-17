@@ -1,6 +1,6 @@
 # SmartDoor - Frontend
 
-Giao diện web cho hệ thống khóa cửa thông minh với dashboard realtime và quản lý người dùng.
+Giao diện web cho hệ thống khóa cửa thông minh với dashboard realtime, quản lý người dùng và nhận diện khuôn mặt.
 
 ## Tech Stack
 
@@ -10,6 +10,7 @@ Giao diện web cho hệ thống khóa cửa thông minh với dashboard realtim
 - **React Router 7** - Điều hướng
 - **Axios** - HTTP client
 - **WebSocket** (native) - Cập nhật real-time
+- **React Webcam** - Chụp ảnh khuôn mặt
 
 ## Cấu trúc thư mục
 
@@ -27,7 +28,7 @@ fe/src/
 ├── pages/
 │   ├── LoginPage.jsx            # Đăng nhập
 │   ├── DashboardPage.jsx        # Admin: trạng thái + điều khiển + thông báo
-│   ├── UsersPage.jsx            # Admin: CRUD người dùng
+│   ├── UsersPage.jsx            # Admin: CRUD người dùng + khuôn mặt
 │   ├── HistoryPage.jsx          # Admin: lịch sử mở cửa
 │   ├── SchedulePage.jsx         # Admin: lịch tự động
 │   └── UserHomePage.jsx         # User: trạng thái + mở cửa
@@ -40,6 +41,7 @@ fe/src/
 │   ├── NotificationList.jsx     # Danh sách thông báo real-time
 │   ├── UserTable.jsx            # Bảng người dùng
 │   ├── UserForm.jsx             # Form thêm/sửa người dùng
+│   ├── FaceCaptureModal.jsx     # Modal chụp ảnh khuôn mặt
 │   └── HistoryTable.jsx         # Bảng lịch sử
 └── utils/
     ├── constants.js             # API_URL, WS_URL
@@ -95,7 +97,7 @@ Output nằm trong thư mục `dist/`. Deploy bằng cách copy thư mục này 
 |--------------|----------------|---------|-------------------------------------------|
 | `/login`     | LoginPage      | Public  | Form đăng nhập                            |
 | `/dashboard` | DashboardPage  | Admin   | Trạng thái cửa, điều khiển, thông báo    |
-| `/users`     | UsersPage      | Admin   | Quản lý người dùng + thẻ RFID            |
+| `/users`     | UsersPage      | Admin   | Quản lý người dùng + thẻ RFID + khuôn mặt |
 | `/history`   | HistoryPage    | Admin   | Lịch sử mở/đóng cửa (có filter)         |
 | `/schedule`  | SchedulePage   | Admin   | Lịch tự động khóa/mở hệ thống            |
 | `/home`      | UserHomePage   | User    | Xem trạng thái + mở cửa                  |
@@ -112,6 +114,8 @@ Output nằm trong thư mục `dist/`. Deploy bằng cách copy thư mục này 
 ### Quản lý người dùng
 - CRUD người dùng (thêm, sửa, xóa)
 - Gán thẻ RFID cho người dùng
+- Đăng ký khuôn mặt cho người dùng (chụp ảnh qua webcam)
+- Xem ảnh khuôn mặt đã đăng ký
 - Phân quyền admin/user
 - Tìm kiếm và filter
 
@@ -130,6 +134,14 @@ Output nằm trong thư mục `dist/`. Deploy bằng cách copy thư mục này 
 - Xem trạng thái cửa realtime
 - Nút mở cửa (nếu hệ thống không khóa)
 - Nhận thông báo
+- Đăng ký khuôn mặt (chụp ảnh qua webcam)
+
+### Nhận diện khuôn mặt
+- Chụp ảnh khuôn mặt qua webcam
+- Đăng ký nhiều ảnh cho 1 người dùng (5-10 ảnh)
+- Xem danh sách ảnh đã đăng ký
+- Xóa ảnh khuôn mặt
+- Hướng dẫn chụp ảnh (góc độ, ánh sáng)
 
 ## Tính năng real-time
 
@@ -206,6 +218,20 @@ Mỗi thông báo có:
 1. Kiểm tra category từ backend đúng format
 2. Kiểm tra Tailwind CSS đã compile
 3. Xem console log để debug
+
+### Webcam không hoạt động
+
+1. Kiểm tra quyền Camera đã cấp cho trình duyệt
+2. Kiểm tra HTTPS (một số trình duyệt yêu cầu HTTPS cho camera)
+3. Thử trình duyệt khác (Chrome, Firefox)
+4. Kiểm tra camera không bị ứng dụng khác sử dụng
+
+### Ảnh khuôn mặt không upload được
+
+1. Kiểm tra kích thước ảnh (< 5MB)
+2. Kiểm tra format ảnh (JPEG, PNG)
+3. Kiểm tra backend có thư mục `dataset/`
+4. Xem log backend để biết lỗi chi tiết
 
 ## License
 

@@ -6,3 +6,11 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 pydantic==2.9.2
 websockets==13.1
+
+# AI/ML dependencies
+torch>=2.0.0
+torchvision>=0.15.0
+opencv-python>=4.8.0
+Pillow>=10.0.0
+numpy>=1.24.0
+python-multipart>=0.0.6

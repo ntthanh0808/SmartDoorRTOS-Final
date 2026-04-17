@@ -1,4 +1,4 @@
-const methodLabel = { rfid: 'Thẻ RFID', web: 'Web', app: 'App' };
+const methodLabel = { rfid: 'Thẻ RFID', web: 'Web', app: 'App', 'face-id': 'FACE ID' };
 
 export default function HistoryTable({ history }) {
   return (

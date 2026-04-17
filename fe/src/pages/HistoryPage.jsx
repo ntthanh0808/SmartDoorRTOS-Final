@@ -26,6 +26,7 @@ export default function HistoryPage() {
           <option value="rfid">Thẻ RFID</option>
           <option value="web">Web</option>
           <option value="app">App</option>
+          <option value="face-id">FACE ID</option>
         </select>
       </div>
 

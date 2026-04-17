@@ -31,7 +31,10 @@ async def send_to_device(message: dict):
 
 
 async def command_open_door(name: str = ""):
-    await send_to_device({"action": "open_door", "name": name})
+    message = {"action": "open_door"}
+    if name:
+        message["name"] = name
+    await send_to_device(message)
 
 
 async def command_close_door():

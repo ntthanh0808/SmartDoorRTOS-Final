@@ -45,6 +45,7 @@ export default function HistoryScreen() {
             <Picker.Item label="Thẻ RFID" value="rfid" />
             <Picker.Item label="Web" value="web" />
             <Picker.Item label="App" value="app" />
+            <Picker.Item label="FACE ID" value="face-id" />
           </Picker>
         </View>
       </View>

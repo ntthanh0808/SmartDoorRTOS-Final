@@ -4,3 +4,8 @@ __pycache__/
 .env
 venv/
 .venv/
+
+# Face Recognition
+dataset/
+*.pth
+token.txt

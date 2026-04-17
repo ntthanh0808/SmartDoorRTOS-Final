@@ -1,6 +1,6 @@
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 
-const METHOD_LABEL = { rfid: 'Thẻ RFID', web: 'Web', app: 'App' };
+const METHOD_LABEL = { rfid: 'Thẻ RFID', web: 'Web', app: 'App', 'face-id': 'FACE ID' };
 
 export default function HistoryTable({ history, refreshControl }) {
   if (!history.length) {
